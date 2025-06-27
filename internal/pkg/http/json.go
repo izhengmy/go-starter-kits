@@ -54,9 +54,9 @@ func (j JSON) Fail(ctx *gin.Context, err error, args ...string) {
 	var validationErrors validator.ValidationErrors
 	switch {
 	case errors.As(err, &serviceError):
-		response = j.handleServiceErr(serviceError)
+		response = j.handleServiceError(serviceError)
 	case errors.As(err, &validationErrors):
-		response = j.handleValidationErrs(validationErrors)
+		response = j.handleValidationErrors(validationErrors)
 	default:
 		response = jsonResponse{
 			Code:    http.StatusInternalServerError,
@@ -72,7 +72,7 @@ func (j JSON) Fail(ctx *gin.Context, err error, args ...string) {
 	ctx.JSON(http.StatusOK, response)
 }
 
-func (j JSON) handleServiceErr(err *errorx.ServiceError) jsonResponse {
+func (j JSON) handleServiceError(err *errorx.ServiceError) jsonResponse {
 	return jsonResponse{
 		Code:    err.Code,
 		Message: err.Message,
@@ -80,7 +80,7 @@ func (j JSON) handleServiceErr(err *errorx.ServiceError) jsonResponse {
 	}
 }
 
-func (j JSON) handleValidationErrs(errs validator.ValidationErrors) jsonResponse {
+func (j JSON) handleValidationErrors(errs validator.ValidationErrors) jsonResponse {
 	messages := map[string]string{}
 	for k, e := range errs.Translate(j.translator) {
 		if idx := strings.Index(k, "."); idx != -1 {

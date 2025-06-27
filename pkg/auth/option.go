@@ -2,7 +2,6 @@ package auth
 
 type options struct {
 	ctxKey              string
-	skips               []string
 	retrieveTokenFunc   RetrieveTokenFunc
 	unauthenticatedFunc UnauthenticatedFunc
 }
@@ -20,12 +19,6 @@ func (f optionFunc) apply(opts *options) {
 func WithContextKey(key string) Option {
 	return optionFunc(func(opts *options) {
 		opts.ctxKey = key
-	})
-}
-
-func WithSkips(skips []string) Option {
-	return optionFunc(func(opts *options) {
-		opts.skips = skips
 	})
 }
 

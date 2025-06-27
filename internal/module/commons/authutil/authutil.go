@@ -1,10 +1,15 @@
 package authutil
 
 import (
+	"app/internal/errorx"
+	pkgHTTP "app/internal/pkg/http"
 	"app/pkg/auth"
+	"net/http"
 
 	"github.com/gin-gonic/gin"
 )
+
+const CtxKeyUser = "user"
 
 type AuthenticationUser[T uint] struct {
 	ID       T      `json:"id"`
@@ -28,7 +33,7 @@ func (u AuthenticationUser[T]) JWTCustomClaims() auth.JWTCustomClaims {
 }
 
 func GetAuthenticationUser(ctx *gin.Context) *AuthenticationUser[uint] {
-	value, ok := ctx.Get("user")
+	value, ok := ctx.Get(CtxKeyUser)
 	if !ok {
 		return nil
 	}
@@ -39,4 +44,11 @@ func GetAuthenticationUser(ctx *gin.Context) *AuthenticationUser[uint] {
 	}
 
 	return user
+}
+
+func Unauthenticated(json *pkgHTTP.JSON) auth.UnauthenticatedFunc {
+	return func(ctx *gin.Context, err error) {
+		json.Fail(ctx, errorx.NewServiceError("登录已过期").WithCode(http.StatusUnauthorized))
+		ctx.AbortWithStatus(http.StatusOK)
+	}
 }
