@@ -1,0 +1,37 @@
+app:
+  name: app
+  env: local
+  locale: en
+
+server:
+  host: 127.0.0.1
+  port: 8000
+
+zap:
+  path: ./storage/logs/app.log
+  level: debug
+  max-size: 100
+  max-backups: 7
+  max-age: 30
+
+gorm:
+  host: 127.0.0.1
+  port: 3306
+  username: root
+  password: root
+  database: app
+  charset: utf8mb4
+  slaves:
+    - host: 127.0.0.1
+  max-idle-conns: 10
+  max-open-conns: 100
+  conn-max-lifetime: 60
+  log:
+    level: info
+    slow-threshold: 300
+
+jwt:
+  issuer: app
+  ttl: 21600
+  algo: HS256
+  secret:
