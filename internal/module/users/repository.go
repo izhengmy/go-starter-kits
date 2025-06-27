@@ -1,14 +1,13 @@
 package users
 
 import (
-	"app/internal/pkg/repository"
 	"app/pkg/gormx"
 
 	"gorm.io/gorm"
 )
 
 type UserRepository struct {
-	repository.Repository
+	gormx.Repository
 	db *gorm.DB
 }
 

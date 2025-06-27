@@ -1,4 +1,4 @@
-package repository
+package gormx
 
 import (
 	"github.com/pkg/errors"
