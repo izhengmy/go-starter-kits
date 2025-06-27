@@ -42,3 +42,7 @@ func (r UserRepository) FindByUsername(username string) (*User, error) {
 func (r UserRepository) Create(user User) error {
 	return r.db.Create(&user).Error
 }
+
+func (r UserRepository) UpdateByID(id uint, values User) error {
+	return r.db.Model(&User{}).Where("id = ?", id).Updates(values).Error
+}

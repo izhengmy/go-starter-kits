@@ -49,10 +49,25 @@ func (c UserController) Login(ctx *gin.Context) {
 
 func (c UserController) Profile(ctx *gin.Context) {
 	authUser := authutil.GetAuthenticationUser(ctx)
-	response, err := c.service.Profile(authUser)
+	response, err := c.service.Profile(*authUser)
 	if err != nil {
 		c.json.Fail(ctx, err)
 		return
 	}
 	c.json.Success(ctx, response)
+}
+
+func (c UserController) ChangePassword(ctx *gin.Context) {
+	var request ChangePasswordRequest
+	if err := ctx.ShouldBindJSON(&request); err != nil {
+		c.json.Fail(ctx, err)
+		return
+	}
+	authUser := authutil.GetAuthenticationUser(ctx)
+	err := c.service.ChangePassword(*authUser, request)
+	if err != nil {
+		c.json.Fail(ctx, err)
+		return
+	}
+	c.json.Success(ctx, nil)
 }

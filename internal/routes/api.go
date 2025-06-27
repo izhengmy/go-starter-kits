@@ -58,7 +58,9 @@ func (r APIRouting) Register(router *gin.RouterGroup) {
 
 	{
 		group := router.Group("", jwtAuth(r, true))
+
 		group.GET("/users/profile", r.userController.Profile)
+		group.PUT("/users/password", r.userController.ChangePassword)
 	}
 }
 

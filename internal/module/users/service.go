@@ -67,11 +67,7 @@ func (s UserService) Login(request LoginRequest) (*LoginResponse, error) {
 	}, nil
 }
 
-func (s UserService) Profile(authUser *authutil.AuthenticationUser[uint]) (*ProfileResponse, error) {
-	if authUser == nil {
-		return nil, errorx.NewServiceError("用户不存在")
-	}
-
+func (s UserService) Profile(authUser authutil.AuthenticationUser[uint]) (*ProfileResponse, error) {
 	user, err := s.repository.FindById(authUser.ID)
 	if err != nil {
 		return nil, err
@@ -85,4 +81,28 @@ func (s UserService) Profile(authUser *authutil.AuthenticationUser[uint]) (*Prof
 		ID:       user.ID,
 		Username: user.Username,
 	}, nil
+}
+
+func (s UserService) ChangePassword(authUser authutil.AuthenticationUser[uint], request ChangePasswordRequest) error {
+	user, err := s.repository.FindById(authUser.ID)
+	if err != nil {
+		return err
+	}
+
+	if user == nil {
+		return errorx.NewServiceError("用户不存在")
+	}
+
+	if !crypt.PasswordVerify(request.OldPassword, user.Password) {
+		return errorx.NewServiceError("旧密码错误")
+	}
+
+	hashedPassword, err := crypt.PasswordHash(request.NewPassword)
+	if err != nil {
+		return errors.Wrap(err, "UserService.ChangePassword() failed to hash password")
+	}
+
+	return s.repository.UpdateByID(user.ID, User{
+		Password: hashedPassword,
+	})
 }
