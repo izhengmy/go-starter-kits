@@ -20,7 +20,7 @@ func wireServer(conf config.Config) (*server.Server, func(), error) {
 		provider.NewGin,
 		provider.NewServer,
 		provider.NewZapLogger,
-		provider.NewGORMDB,
+		provider.NewGORMDataSources,
 		provider.NewTranslator,
 		routes.ProviderSet,
 		pkg.ProviderSet,

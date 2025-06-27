@@ -6,50 +6,80 @@ import (
 
 	"go.uber.org/zap"
 	"gorm.io/driver/mysql"
+	"gorm.io/driver/postgres"
+	"gorm.io/driver/sqlite"
 	"gorm.io/gorm"
 	"gorm.io/plugin/dbresolver"
 )
 
 type Config struct {
-	DBConfig        `mapstructure:",squash"`
-	Slaves          []DBConfig `mapstructure:"slaves"`
-	MaxIdleConns    int        `mapstructure:"max-idle-conns"`
-	MaxOpenConns    int        `mapstructure:"max-open-conns"`
-	ConnMaxLifetime int        `mapstructure:"conn-max-lifetime"`
-	Log             LogConfig  `mapstructure:"log"`
+	Sources []DataSourceConfig `mapstructure:"data-sources"`
+	Log     LogConfig          `mapstructure:"log"`
 }
 
-type DBConfig struct {
-	Host     string `mapstructure:"host"`
-	Port     string `mapstructure:"port"`
-	Username string `mapstructure:"username"`
-	Password string `mapstructure:"password"`
-	Database string `mapstructure:"database"`
-	Charset  string `mapstructure:"charset"`
+type DataSourceConfig struct {
+	ID              string   `mapstructure:"id"`
+	Driver          string   `mapstructure:"driver"`
+	DSN             string   `mapstructure:"dsn"`
+	MaxIdleConns    int      `mapstructure:"max-idle-conns"`
+	MaxOpenConns    int      `mapstructure:"max-open-conns"`
+	ConnMaxLifetime int      `mapstructure:"conn-max-lifetime"`
+	Slaves          []string `mapstructure:"slaves"`
 }
 
-func NewDB(zapLogger *zap.Logger, config Config) (*gorm.DB, func(), error) {
-	logger := newLogger(zapLogger, config.Log)
-	dsn := buildDSN(config.Host, config.Port, config.Username, config.Password, config.Database, config.Charset)
-	db, err := gorm.Open(mysql.Open(dsn), &gorm.Config{
+type DataSources map[string]*gorm.DB
+
+func InitDataSources(zapLogger *zap.Logger, config Config) (DataSources, func(), error) {
+	dataSources := DataSources{}
+	cleanups := make([]func(), 0, len(config.Sources))
+
+	for _, cfg := range config.Sources {
+		logger := newLogger(zapLogger, config.Log, cfg.ID)
+		db, cleanup, err := CreateDB(logger, cfg)
+		if err != nil {
+			return nil, nil, err
+		}
+		dataSources[cfg.ID] = db
+		cleanups = append(cleanups, cleanup)
+	}
+
+	cleanup := func() {
+		for _, c := range cleanups {
+			c()
+		}
+	}
+
+	return dataSources, cleanup, nil
+}
+
+func CreateDB(logger *logger, config DataSourceConfig) (*gorm.DB, func(), error) {
+	driver := config.Driver
+	dsn := config.DSN
+
+	dialector, err := createDialector(driver, dsn)
+	if err != nil {
+		return nil, nil, fmt.Errorf("failed to create dialector for [%s]: %w", config.ID, err)
+	}
+
+	db, err := gorm.Open(dialector, &gorm.Config{
 		Logger: logger,
 	})
-	if err != nil {
-		return nil, nil, fmt.Errorf("failed to connect database: %v", err)
-	}
 
 	sqlDB, err := db.DB()
 	if err != nil {
-		return nil, nil, fmt.Errorf("failed to retrieve database connection: %v", err)
+		return nil, nil, fmt.Errorf("failed to retrieve database connection for [%s]: %w", config.ID, err)
 	}
 
 	if len(config.Slaves) > 0 {
 		replicas := make([]gorm.Dialector, 0, len(config.Slaves))
+
 		for i := range config.Slaves {
-			s := &config.Slaves[i]
-			mergeMasterSlaveConfig(config, s)
-			dsn := buildDSN(s.Host, s.Port, s.Username, s.Password, s.Database, s.Charset)
-			replicas = append(replicas, mysql.Open(dsn))
+			dsn := config.Slaves[i]
+			dialector, err := createDialector(driver, dsn)
+			if err != nil {
+				return nil, nil, fmt.Errorf("failed to create replica dialector for [%s]: %w", config.ID, err)
+			}
+			replicas = append(replicas, dialector)
 		}
 
 		resolverConfig := dbresolver.Config{
@@ -60,7 +90,7 @@ func NewDB(zapLogger *zap.Logger, config Config) (*gorm.DB, func(), error) {
 
 		err = db.Use(dbresolver.Register(resolverConfig))
 		if err != nil {
-			return nil, nil, fmt.Errorf("failed to use dbresolver plugin: %v", err)
+			return nil, nil, fmt.Errorf("failed to use dbresolver plugin for [%s]: %w", config.ID, err)
 		}
 	}
 
@@ -75,25 +105,15 @@ func NewDB(zapLogger *zap.Logger, config Config) (*gorm.DB, func(), error) {
 	return db, cleanup, nil
 }
 
-func buildDSN(host, port, username, password, database, charset string) string {
-	dsn := "%s:%s@tcp(%s:%s)/%s?charset=%s&parseTime=True&loc=Local"
-	return fmt.Sprintf(dsn, username, password, host, port, database, charset)
-}
-
-func mergeMasterSlaveConfig(masterConfig Config, slaveConfig *DBConfig) {
-	if slaveConfig.Port == "" {
-		slaveConfig.Port = masterConfig.Port
+func createDialector(driver string, dsn string) (gorm.Dialector, error) {
+	switch driver {
+	case "mysql":
+		return mysql.Open(dsn), nil
+	case "postgres":
+	case "pgsql":
+		return postgres.Open(dsn), nil
+	case "sqlite":
+		return sqlite.Open(dsn), nil
 	}
-	if slaveConfig.Username == "" {
-		slaveConfig.Username = masterConfig.Username
-	}
-	if slaveConfig.Password == "" {
-		slaveConfig.Password = masterConfig.Password
-	}
-	if slaveConfig.Database == "" {
-		slaveConfig.Database = masterConfig.Database
-	}
-	if slaveConfig.Charset == "" {
-		slaveConfig.Charset = masterConfig.Charset
-	}
+	return nil, fmt.Errorf("unsupported database driver %s", driver)
 }

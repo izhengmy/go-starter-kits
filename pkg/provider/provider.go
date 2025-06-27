@@ -11,7 +11,6 @@ import (
 	ut "github.com/go-playground/universal-translator"
 	"github.com/spf13/viper"
 	"go.uber.org/zap"
-	"gorm.io/gorm"
 )
 
 func NewGin(logger *zap.Logger, routes ginx.Routes) *gin.Engine {
@@ -34,12 +33,12 @@ func NewZapLogger() (*zap.Logger, func()) {
 	return zapx.NewLogger(config)
 }
 
-func NewGORMDB(zapLogger *zap.Logger) (*gorm.DB, func()) {
+func NewGORMDataSources(zapLogger *zap.Logger) (gormx.DataSources, func()) {
 	var config gormx.Config
 	if err := viper.UnmarshalKey("gorm", &config); err != nil {
 		panic(err)
 	}
-	db, cleanup, err := gormx.NewDB(zapLogger, config)
+	db, cleanup, err := gormx.InitDataSources(zapLogger, config)
 	if err != nil {
 		panic(err)
 	}

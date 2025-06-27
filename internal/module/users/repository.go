@@ -1,6 +1,8 @@
 package users
 
 import (
+	"app/pkg/gormx"
+
 	"github.com/pkg/errors"
 
 	"gorm.io/gorm"
@@ -10,9 +12,9 @@ type UserRepository struct {
 	db *gorm.DB
 }
 
-func NewUserRepository(db *gorm.DB) *UserRepository {
+func NewUserRepository(ds gormx.DataSources) *UserRepository {
 	return &UserRepository{
-		db: db,
+		db: ds["mysql"],
 	}
 }
 

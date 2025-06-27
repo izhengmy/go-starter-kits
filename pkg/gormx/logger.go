@@ -22,12 +22,13 @@ type LogConfig struct {
 }
 
 type logger struct {
-	zapLogger *zap.Logger
-	level     gLogger.LogLevel
-	config    LogConfig
+	zapLogger    *zap.Logger
+	level        gLogger.LogLevel
+	config       LogConfig
+	dataSourceID string
 }
 
-func newLogger(zapLogger *zap.Logger, config LogConfig) *logger {
+func newLogger(zapLogger *zap.Logger, config LogConfig, dataSourceID string) *logger {
 	level := gLogger.Warn
 
 	switch config.Level {
@@ -40,9 +41,10 @@ func newLogger(zapLogger *zap.Logger, config LogConfig) *logger {
 	}
 
 	return &logger{
-		zapLogger: zapLogger,
-		level:     level,
-		config:    config,
+		zapLogger:    zapLogger,
+		level:        level,
+		config:       config,
+		dataSourceID: dataSourceID,
 	}
 }
 
@@ -54,19 +56,28 @@ func (l *logger) LogMode(level gLogger.LogLevel) gLogger.Interface {
 
 func (l *logger) Info(ctx context.Context, msg string, data ...interface{}) {
 	if l.level >= gLogger.Info {
-		l.zapLogger.Info(fmt.Sprintf(msg, data...))
+		l.zapLogger.Info(
+			fmt.Sprintf(msg, data...),
+			zap.String("dataSourceID", l.dataSourceID),
+		)
 	}
 }
 
 func (l *logger) Warn(ctx context.Context, msg string, data ...interface{}) {
 	if l.level >= gLogger.Warn {
-		l.zapLogger.Warn(fmt.Sprintf(msg, data...))
+		l.zapLogger.Warn(
+			fmt.Sprintf(msg, data...),
+			zap.String("dataSourceID", l.dataSourceID),
+		)
 	}
 }
 
 func (l *logger) Error(ctx context.Context, msg string, data ...interface{}) {
 	if l.level >= gLogger.Error {
-		l.zapLogger.Error(fmt.Sprintf(msg, data...))
+		l.zapLogger.Error(
+			fmt.Sprintf(msg, data...),
+			zap.String("dataSourceID", l.dataSourceID),
+		)
 	}
 }
 
@@ -79,6 +90,7 @@ func (l *logger) Trace(ctx context.Context, begin time.Time, fc func() (string, 
 	times := time.Since(begin)
 	sql, rows := fc()
 	fields := []zap.Field{
+		zap.String("dataSourceID", l.dataSourceID),
 		zap.String("sql", sql),
 		zap.Int64("rows", rows),
 		zap.Duration("times", times),

@@ -15,17 +15,15 @@ zap:
   max-age: 30
 
 gorm:
-  host: 127.0.0.1
-  port: 3306
-  username: root
-  password: root
-  database: app
-  charset: utf8mb4
-  slaves:
-    - host: 127.0.0.1
-  max-idle-conns: 10
-  max-open-conns: 100
-  conn-max-lifetime: 60
+  data-sources:
+    - id: mysql
+      driver: mysql
+      dsn: "root:root@tcp(127.0.0.1:3306)/app?charset=utf8mb4&parseTime=True&loc=Local"
+      max-idle-conns: 10
+      max-open-conns: 100
+      conn-max-lifetime: 60
+      slaves:
+        - "root:root@tcp(127.0.0.1:3306)/app?charset=utf8mb4&parseTime=True&loc=Local"
   log:
     level: info
     slow-threshold: 300
