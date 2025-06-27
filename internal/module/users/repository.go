@@ -1,14 +1,14 @@
 package users
 
 import (
+	"app/internal/pkg/repository"
 	"app/pkg/gormx"
-
-	"github.com/pkg/errors"
 
 	"gorm.io/gorm"
 )
 
 type UserRepository struct {
+	repository.Repository
 	db *gorm.DB
 }
 
@@ -27,11 +27,7 @@ func (r UserRepository) ExistsByUsername(username string) bool {
 func (r UserRepository) FindById(id uint) (*User, error) {
 	var user *User
 	if err := r.db.Where("id = ?", id).Take(&user).Error; err != nil {
-		if errors.Is(err, gorm.ErrRecordNotFound) {
-			return nil, nil
-		} else {
-			return nil, errors.WithStack(err)
-		}
+		return nil, r.WrapTakeError(err)
 	}
 	return user, nil
 }
@@ -39,11 +35,7 @@ func (r UserRepository) FindById(id uint) (*User, error) {
 func (r UserRepository) FindByUsername(username string) (*User, error) {
 	var user *User
 	if err := r.db.Where("username = ?", username).Take(&user).Error; err != nil {
-		if errors.Is(err, gorm.ErrRecordNotFound) {
-			return nil, nil
-		} else {
-			return nil, errors.WithStack(err)
-		}
+		return nil, r.WrapTakeError(err)
 	}
 	return user, nil
 }
